@@ -4,6 +4,8 @@
  *   ks128A: rk25 from faults at round 24; ks128B: only rk27, rk26, then a 2^32
  *   search per surviving tuple (cost counted here, run by `dfa brute128`).
  *
+ * dfa verify / dfa brute128: see the comments above those functions.
+ *
  * dfa explore: one-stage attack with full logging (earlier round keys taken
  * as known and correct). Used to check the attack on a few keys.
  *
@@ -16,6 +18,8 @@
 #include "../ref/ks_inv.h"
 #include "../attack/chain.h"
 #include <pthread.h>
+
+static uint8_t ks_lfsr_tab[28];
 
 void dipper_expand_96(const uint16_t k[6], uint64_t rk[28]);
 void dipper_expand_128(const uint16_t k[8], uint64_t rk[28]);
@@ -140,6 +144,93 @@ static int verify(int argc, char **argv) {
     return bad_a || bad_b;
 }
 
+/* ---- 64/128 option B: rk27, rk26 from faults, then search the 2^32 values of (K6,K7) ---- */
+typedef struct {
+    uint16_t K26[8]; uint64_t x26, p0; int v;   /* x26 = input of round 26 (from c0, rk27, rk26) */
+    uint32_t next_chunk; long long matches; uint16_t found[8];
+    pthread_mutex_t mu;
+} bjob_t;
+
+static void *bworker(void *arg) {
+    bjob_t *B = arg;
+    for (;;) {
+        pthread_mutex_lock(&B->mu); uint32_t ch = B->next_chunk++; pthread_mutex_unlock(&B->mu);
+        if (ch >= 65536) break;
+        for (uint32_t lo = 0; lo < 65536; lo++) {
+            uint16_t K[8]; memcpy(K, B->K26, sizeof(K));
+            K[6] = (uint16_t)ch; K[7] = (uint16_t)lo;
+            uint64_t s = B->x26;
+            for (int i = 25; i >= 0; i--) {           /* state_i and rk_i from state_{i+1}; s = x_i */
+                ks_invupdate_128(K, ks_lfsr_tab[i]);
+                uint64_t rki = (uint64_t)K[3] << 48 | (uint64_t)K[2] << 32 | (uint64_t)K[1] << 16 | K[0];
+                s = Finv(s, B->v) ^ rki;
+            }
+            if (s == B->p0) {
+                pthread_mutex_lock(&B->mu);
+                B->matches++; memcpy(B->found, K, sizeof(K));
+                pthread_mutex_unlock(&B->mu);
+            }
+        }
+    }
+    return 0;
+}
+
+/* dfa brute128 <variant> <trials> <seed> <floor> <theta> <node_cap> <threads>
+ * Same keys and faults as `dfa attack <variant> ks128B ...` with the same seed. Recovers rk27,
+ * rk26, keeps tuples consistent with the key schedule, then searches all 2^32 (K6,K7) per tuple
+ * with one known plaintext/ciphertext pair. */
+static int brute128(int argc, char **argv) {
+    if (argc < 9) return 2;
+    attack_cfg_t C; memset(&C, 0, sizeof(C));
+    C.v = parse_variant(argv[2]); C.model = M1; C.maxfaults = 1000;
+    int trials = atoi(argv[3]); uint64_t seed = strtoull(argv[4], 0, 0);
+    C.floor_ = atoi(argv[5]); C.theta = atof(argv[6]); C.cap = atoll(argv[7]); int th = atoi(argv[8]);
+    for (int i = 0; i < 28; i++) ks_lfsr_tab[i] = ks_lfsr(i);
+    prefix_t *A = calloc(MAXPREF, sizeof(prefix_t)), *Bp = calloc(MAXPREF, sizeof(prefix_t));
+    for (int t = 0; t < trials; t++) {
+        uint64_t rng = seed ^ (0xD1B54A32D192ED03ULL * (uint64_t)(t + 1));
+        sm64(&rng);
+        uint16_t k[8]; uint64_t rk[28];
+        random_key(128, &rng, k, rk);
+        int na = 1; memset(A[0].rk, 0, sizeof(A[0].rk)); A[0].alive = 1;
+        stage_t st[2]; int ok = 1, faults = 0;
+        for (int s = 0; s < 2 && ok; s++) {
+            int nb; ok = run_stage(&C, 27 - s, rk, &rng, A, na, Bp, &nb, &st[s]);
+            prefix_t *tmp = A; A = Bp; Bp = tmp; na = nb; faults += st[s].faults;
+        }
+        uint64_t p0 = sm64(&rng), c0 = encrypt_v(p0, rk, C.v);
+        long long cons = 0, matches = 0; int found_true = 0;
+        struct timespec w0, w1; clock_gettime(CLOCK_MONOTONIC, &w0);
+        double c_0 = (double)clock() / CLOCKS_PER_SEC;
+        for (int q = 0; ok && q < na; q++) {
+            uint16_t a[4], b[4]; words4(A[q].rk[26], a); words4(A[q].rk[27], b);
+            uint16_t K[8] = {a[0], a[1], a[2], a[3], b[2], s_top(b[3], KS_SI), 0, 0};
+            uint16_t Kf[8]; memcpy(Kf, K, sizeof(K)); ks_update_128(Kf, ks_lfsr(26));
+            uint64_t r27 = (uint64_t)Kf[3] << 48 | (uint64_t)Kf[2] << 32 | (uint64_t)Kf[1] << 16 | Kf[0];
+            if (r27 != A[q].rk[27]) continue;               /* key-schedule consistency */
+            cons++;
+            bjob_t J; memset(&J, 0, sizeof(J)); memcpy(J.K26, K, sizeof(K));
+            J.v = C.v; J.p0 = p0;
+            J.x26 = Finv(Finv(c0, C.v) ^ A[q].rk[27], C.v) ^ A[q].rk[26];   /* y27 -> x27 -> y26 -> x26 */
+            pthread_mutex_init(&J.mu, 0);
+            pthread_t tid[64];
+            for (int i = 0; i < th; i++) pthread_create(&tid[i], 0, bworker, &J);
+            for (int i = 0; i < th; i++) pthread_join(tid[i], 0);
+            matches += J.matches;
+            if (J.matches) { int same = 1; for (int j = 0; j < 8; j++) same &= J.found[j] == k[j]; found_true |= same; }
+        }
+        clock_gettime(CLOCK_MONOTONIC, &w1);
+        double wall = (w1.tv_sec - w0.tv_sec) + 1e-9 * (w1.tv_nsec - w0.tv_nsec);
+        double cpu = (double)clock() / CLOCKS_PER_SEC - c_0;
+        printf("{\"trial\":%d,\"variant\":\"%s\",\"seed\":\"0x%llX\",\"ok\":%d,\"faults\":%d,\"tuples\":%d,\"consistent\":%lld,"
+               "\"searched\":%lld,\"matches\":%lld,\"success\":%d,\"search_wall_s\":%.1f,\"search_cpu_s\":%.1f,\"threads\":%d}\n",
+               t, VARIANT_NAME[C.v], (unsigned long long)seed, ok, faults, na, cons, cons << 32, matches,
+               found_true && matches == 1, wall, cpu, th);
+        fflush(stdout);
+    }
+    return 0;
+}
+
 typedef struct {
     attack_cfg_t cfg;
     int ks, opt, trials;
@@ -165,15 +256,28 @@ static void one_trial(job_t *J, int t, FILE *o) {
         ok = run_stage(C, 27 - s, rk, &rng, A, na, B, &nb, &st[s]);
         prefix_t *tmp = A; A = B; B = tmp; na = nb;
     }
-    /* master-key candidates, checked against one known plaintext/ciphertext pair */
+    /* master-key candidates: (1) re-expand each candidate master key and keep it only if it
+     * reproduces every recovered round key (the key schedule makes some round-key words
+     * redundant, so this is a free filter); (2) remove duplicates; (3) check the rest
+     * against one known plaintext/ciphertext pair. */
     uint64_t p0 = sm64(&rng), c0 = encrypt_v(p0, rk, C->v);
-    long long masters = 0, match = 0; int true_match = 0;
+    long long masters = 0, consistent = 0, match = 0; int true_match = 0;
     if (ok && !(J->ks == 128 && J->opt == 'B')) {
+        static __thread uint64_t (*ml)[2];
+        if (!ml) ml = malloc(sizeof(*ml) * MAXPREF);
+        int lo = J->ks == 96 ? 26 : 25;
         for (int q = 0; q < na; q++) {
             uint16_t m[8] = {0}; uint64_t rr[28];
             if (J->ks == 96) { ks96_master_from_rk(A[q].rk[26], A[q].rk[27], m); dipper_expand_96(m, rr); }
             else { ks128_master_from_rk(A[q].rk[25], A[q].rk[26], A[q].rk[27], m); dipper_expand_128(m, rr); }
             masters++;
+            int cons = 1; for (int r = lo; r < 28; r++) cons &= rr[r] == A[q].rk[r];
+            if (!cons) continue;
+            uint64_t a = (uint64_t)m[7] << 48 | (uint64_t)m[6] << 32 | (uint64_t)m[5] << 16 | m[4];
+            uint64_t b = (uint64_t)m[3] << 48 | (uint64_t)m[2] << 32 | (uint64_t)m[1] << 16 | m[0];
+            int dup = 0; for (long long z = 0; z < consistent && !dup; z++) dup = ml[z][0] == a && ml[z][1] == b;
+            if (dup) continue;
+            ml[consistent][0] = a; ml[consistent][1] = b; consistent++;
             if (encrypt_v(p0, rr, C->v) == c0) {
                 match++;
                 int same = 1; for (int j = 0; j < (J->ks == 96 ? 6 : 8); j++) same &= m[j] == k[j];
@@ -183,14 +287,23 @@ static void one_trial(job_t *J, int t, FILE *o) {
     }
     int true_tuple = 0;   /* 128B: is (rk26, rk27) true among the final tuples */
     if (ok && J->ks == 128 && J->opt == 'B')
-        for (int q = 0; q < na; q++) true_tuple |= A[q].rk[26] == rk[26] && A[q].rk[27] == rk[27];
+        for (int q = 0; q < na; q++) {
+            /* key-schedule consistency: rk27 words 0,1 follow from rk26 words 0,1 */
+            uint16_t a[4], b[4]; words4(A[q].rk[26], a); words4(A[q].rk[27], b);
+            uint16_t K[8] = {a[0], a[1], a[2], a[3], b[2], s_top(b[3], KS_SI), 0, 0};
+            ks_update_128(K, ks_lfsr(26));
+            uint64_t r27 = (uint64_t)K[3] << 48 | (uint64_t)K[2] << 32 | (uint64_t)K[1] << 16 | K[0];
+            if (r27 != A[q].rk[27]) continue;
+            consistent++;
+            true_tuple |= A[q].rk[26] == rk[26] && A[q].rk[27] == rk[27];
+        }
     double cpu = tcpu() - t0;
     int total = 0; for (int i = 0; i < s; i++) total += st[i].faults;
     pthread_mutex_lock(&J->mu);
     fprintf(o, "{\"trial\":%d,\"variant\":\"%s\",\"ks\":%d,\"opt\":\"%c\",\"model\":%d,\"mode\":\"%s\",\"seed\":\"0x%llX\",\"floor\":%d,\"theta\":%g,\"node_cap\":%lld,"
-               "\"ok\":%d,\"total_faults\":%d,\"tuples_final\":%d,\"masters\":%lld,\"pc_match\":%lld,\"success\":%d,\"true_tuple\":%d,\"cpu\":%.4f,\"stages\":[",
+               "\"ok\":%d,\"total_faults\":%d,\"tuples_final\":%d,\"masters\":%lld,\"consistent\":%lld,\"pc_match\":%lld,\"success\":%d,\"true_tuple\":%d,\"cpu\":%.4f,\"stages\":[",
             t, VARIANT_NAME[C->v], J->ks, J->opt ? J->opt : '-', C->model, C->deep ? "deep" : "near", (unsigned long long)J->seed, C->floor_, C->theta, C->cap,
-            ok, total, na, masters, match, true_match && match == 1, true_tuple, cpu);
+            ok, total, na, masters, consistent, match, true_match && match == 1, true_tuple, cpu);
     for (int i = 0; i < s; i++) {
         stage_t *S = &st[i];
         fprintf(o, "%s{\"target\":%d,\"fault_round\":%d,\"faults\":%d,\"faults_g\":[%d,%d],\"reached\":%d,\"prefixes_in\":%d,\"live_end\":%d,\"cands_out\":%lld,"
@@ -246,6 +359,7 @@ int main(int argc, char **argv) {
     if (argc > 1 && !strcmp(argv[1], "explore")) return explore(argc, argv);
     if (argc > 1 && !strcmp(argv[1], "attack")) return attack(argc, argv);
     if (argc > 1 && !strcmp(argv[1], "verify")) return verify(argc, argv);
+    if (argc > 1 && !strcmp(argv[1], "brute128")) return brute128(argc, argv);
     fprintf(stderr, "usage: see header\n");
     return 2;
 }

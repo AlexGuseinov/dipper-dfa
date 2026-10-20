@@ -107,7 +107,8 @@ static int run_stage(const attack_cfg_t *A, int T, const uint64_t *rk_true, uint
                 else dfa_group(P->gp[g], P->n[g], g, A->v, A->model, A->cap, &res);
                 st->nodes += res.nodes;
                 if (res.level_max > st->level_max) st->level_max = res.level_max;
-                P->cnt[g] = res.leaves; P->capped[g] = res.capped;
+                P->cnt[g] = res.capped && res.leaves < 1 ? 1 : res.leaves;   /* capped: lower bound */
+                P->capped[g] = res.capped;
                 if (!res.capped && res.leaves == 0) { P->alive = 0; break; }
                 if (!res.capped && res.leaves <= CANDCAP) memcpy(P->cand[g], cbuf, sizeof(uint32_t) * res.leaves);
             }
