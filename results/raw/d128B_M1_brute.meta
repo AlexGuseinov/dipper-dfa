@@ -1,0 +1,3 @@
+command: bin/dfa brute128 dipper 5 0xD1FA0201 4 -1 1000000 8
+started: 2026-10-21T13:33:46Z
+finished: 2026-10-21T13:46:30Z

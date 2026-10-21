@@ -1,0 +1,10 @@
+name: none128A_M1_deep_strict
+command: bin/dfa attack none ks128A M1 deep 1000 0xD1FA0201 1 -1 1000000 8
+started: 2026-10-21T13:07:46Z
+host: vmi3646081  cpu: AMD EPYC Processor (with IBPB)
+compiler: gcc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0
+code sha256: ea67aae62a1c1431
+wall_s: 1559.61
+user_s: 12411.06
+finished: 2026-10-21T13:33:46Z
+lines: 1000

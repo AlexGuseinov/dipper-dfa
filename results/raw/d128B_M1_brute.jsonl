@@ -1,0 +1,5 @@
+{"trial":0,"variant":"dipper","seed":"0xD1FA0201","ok":1,"faults":238,"tuples":16,"consistent":1,"searched":4294967296,"matches":1,"success":1,"search_wall_s":151.0,"search_cpu_s":1206.2,"threads":8}
+{"trial":1,"variant":"dipper","seed":"0xD1FA0201","ok":1,"faults":182,"tuples":16,"consistent":1,"searched":4294967296,"matches":1,"success":1,"search_wall_s":150.5,"search_cpu_s":1202.9,"threads":8}
+{"trial":2,"variant":"dipper","seed":"0xD1FA0201","ok":1,"faults":358,"tuples":16,"consistent":1,"searched":4294967296,"matches":1,"success":1,"search_wall_s":152.0,"search_cpu_s":1214.5,"threads":8}
+{"trial":3,"variant":"dipper","seed":"0xD1FA0201","ok":1,"faults":208,"tuples":16,"consistent":1,"searched":4294967296,"matches":1,"success":1,"search_wall_s":152.3,"search_cpu_s":1217.4,"threads":8}
+{"trial":4,"variant":"dipper","seed":"0xD1FA0201","ok":1,"faults":223,"tuples":16,"consistent":1,"searched":4294967296,"matches":1,"success":1,"search_wall_s":151.4,"search_cpu_s":1209.9,"threads":8}

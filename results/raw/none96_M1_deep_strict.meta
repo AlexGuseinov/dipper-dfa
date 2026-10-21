@@ -1,0 +1,10 @@
+name: none96_M1_deep_strict
+command: bin/dfa attack none ks96 M1 deep 1000 0xD1FA0101 1 -1 1000000 8
+started: 2026-10-21T00:48:31Z
+host: vmi3646081  cpu: AMD EPYC Processor (with IBPB)
+compiler: gcc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0
+code sha256: ea67aae62a1c1431
+wall_s: 1041.26
+user_s: 8280.41
+finished: 2026-10-21T01:05:53Z
+lines: 1000
