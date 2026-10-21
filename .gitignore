@@ -1,2 +1,5 @@
 bin/
 __pycache__/
+
+# paper draft is kept local only (not published before submission)
+paper/

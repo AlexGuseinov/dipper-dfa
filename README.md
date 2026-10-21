@@ -2,7 +2,7 @@
 
 Differential fault analysis of the Dipper block cipher (64/96 and 64/128) in software
 simulation, with an ablation on two analysis-only variants (`xor`, `none`) that are **not**
-proposed as ciphers. Paper draft (Springer Nature sn-jnl template): `paper/springer/paper_sn.tex`. Main tables: `RESULTS.md`.
+proposed as ciphers. Main tables: `RESULTS.md`.
 
 Reference code in `ref/` is copied from
 https://github.com/AlexGuseinov/Dipper-lightweight-cipher at commit
@@ -18,8 +18,7 @@ sim/        fault.h (fault models), dfa_run.c (CLI), run_batch.sh, batches/ (exa
 analysis/   summarize.py (tables), figures.py (figures), show.py (debug view)
 results/raw/      one JSON line per key, plus .meta (command, seed, times)
 results/summary/  per-run summaries and summary_table.md
-figures/    fig1_faults_ecdf.png, fig2_survivors.png
-paper/springer/  paper_sn.tex, refs.bib, sn-jnl.cls, sn-mathphys-num.bst, figures
+figures/    fig1-fig5 (PNG), produced by analysis/figures.py
 ```
 
 ## Reproduce (Linux server, gcc)

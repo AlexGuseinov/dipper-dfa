@@ -1,6 +1,6 @@
 # RESULTS
 
-Paper-ready tables and the discussion are in `paper/springer/paper_sn.tex`. All rows below are produced by `analysis/summarize.py` from `results/raw/`; faults are simulated in software, 1000 random keys per row.
+All rows below are produced by `analysis/summarize.py` from `results/raw/`; faults are simulated in software, 1000 random keys per row.
 
 xor and none are analysis-only variants, not proposed as ciphers.
 
@@ -30,4 +30,4 @@ xor and none are analysis-only variants, not proposed as ciphers.
 
 64/128 option B: 1000/1000 keys leave exactly one (rk26, rk27) tuple after the key-schedule consistency check, and it is the true one. Full 2^32 search (results/raw/d128B_M1_brute.jsonl): 5/5 keys correct and unique, 150.5-152.3 s wall on 8 threads (1202.9-1217.4 s CPU) per key.
 
-Last round (Observation 1 in the paper): C = F(x27 xor rk27) with F = P o ARX o S public and invertible, so F^-1(C) = x27 xor rk27 needs no key. The last round adds the key rk27 but no keyed nonlinear layer; the 28 rounds amount to 27 keyed nonlinear rounds plus a whitening key.
+Last round (Observation 1): C = F(x27 xor rk27) with F = P o ARX o S public and invertible, so F^-1(C) = x27 xor rk27 needs no key. The last round adds the key rk27 but no keyed nonlinear layer; the 28 rounds amount to 27 keyed nonlinear rounds plus a whitening key.
