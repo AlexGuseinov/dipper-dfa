@@ -64,15 +64,22 @@ countermeasures.}
 Lightweight block ciphers are used in small devices such as sensors, smart cards and
 microcontrollers. Such devices are often physically accessible to an attacker, and their
 implementations can therefore be targeted by physical attacks in addition to classical
-cryptanalysis. Fault attacks are one important class: the attacker disturbs the computation, for
-example by a clock or voltage glitch, and observes the effect on the output. In
-\emph{differential fault analysis} (DFA) the attacker compares a correct ciphertext with a faulty
-one obtained from the same plaintext and key, and uses the difference to filter key candidates.
-DFA results are available for most lightweight ciphers, including GIFT~\cite{Xie2021,Luo2021,Saha2018},
-PRESENT~\cite{Bagheri2013} and the ARX ciphers SIMON and SPECK~\cite{Tupsamudre2014,Huo2015}.
+cryptanalysis. Fault attacks are one important class~\cite{BarEl2006,Barenghi2012}: the
+attacker disturbs the computation, for example by a clock glitch~\cite{Agoyan2010} or a light
+pulse~\cite{Skorobogatov2002}, and observes the effect on the output. The first fault attacks targeted
+public-key implementations~\cite{Boneh1997}; soon after, Biham and Shamir introduced
+\emph{differential fault analysis} (DFA) for secret-key ciphers~\cite{Biham1997}. In DFA the attacker
+compares a correct ciphertext with a faulty one obtained from the same plaintext and key, and uses the
+difference to filter key candidates. For substitution--permutation networks, faults in the input of the
+last rounds are a standard target~\cite{PiretQ2003,Tunstall2011}. DFA results are available for most
+lightweight ciphers, including GIFT~\cite{Xie2021,Luo2021,Saha2018,Gao2024,Kundu2025},
+PRESENT~\cite{Bagheri2013,Patranabis2017} and the ARX ciphers SIMON and
+SPECK~\cite{Tupsamudre2014,Huo2015}.
 
-Dipper~\cite{Dipper2026} is a recent hybrid SPN--ARX design. Each round applies the GIFT S-box to
-all 16 nibbles, rotates the four 16-bit words by different amounts, adds two pairs of words modulo
+Dipper~\cite{Dipper2026} is a recent hybrid SPN--ARX design. It borrows the S-box and the bit
+permutation of GIFT-64~\cite{Banik2017}, itself a successor of PRESENT~\cite{Bogdanov2007}, and adds
+word-wise modular additions as in ARX designs such as SPECK~\cite{Beaulieu2015}. Each round applies the
+GIFT S-box to all 16 nibbles, rotates the four 16-bit words by different amounts, adds two pairs of words modulo
 $2^{16}$, and applies the GIFT-64 bit permutation. The modular additions are the ARX part of the
 design. The design paper evaluates differential, linear, impossible-differential
 and integral attacks, but it does not consider fault attacks, and we found no published fault attack
@@ -132,8 +139,8 @@ A_1 &= A\lll 1,\quad B_1=B\lll 4,\quad C_1=C\lll 7,\quad D_1=D\lll 11, \label{eq
 A_2 &= A_1 \boxplus B_1,\qquad C_2 = C_1 \boxplus D_1, \label{eq:r3}\\
 x_{i+1} &= P(A_2, B_1, C_2, D_1), \label{eq:r4}
 \end{align}
-where $S$ applies the 4-bit GIFT S-box to all 16 nibbles, $\boxplus$ is addition modulo $2^{16}$
-and $P$ is the GIFT-64 bit permutation. Figure~\ref{fig:round} shows one round. The plaintext is
+where $S$ applies the 4-bit GIFT S-box~\cite{Banik2017} to all 16 nibbles, $\boxplus$ is addition
+modulo $2^{16}$ and $P$ is the GIFT-64 bit permutation~\cite{Banik2017}. Figure~\ref{fig:round} shows one round. The plaintext is
 $x_0$ and the ciphertext is $x_{28}$.
 
 We write $F = P\circ \mathrm{ARX}\circ S$ for the keyless part of a round, so that
@@ -197,7 +204,9 @@ We implemented the inverse updates and checked them on 10\,000 random keys of ea
 \section{Fault model and attacker}\label{sec:model}
 
 A fault is modelled as an XOR mask added to the S-box input $y_r$ of one round $r$. We use the three
-models in Table~\ref{tab:models}. The attacker knows the fault model and the round in which the fault
+models in Table~\ref{tab:models}. Random bit, nibble and byte faults are the usual models in DFA of
+nibble- and byte-oriented ciphers~\cite{PiretQ2003,Tunstall2011,Xie2021,Gao2024}; surveys of how such faults
+are produced in practice and how well they follow these models are given in~\cite{BarEl2006,Barenghi2012}. The attacker knows the fault model and the round in which the fault
 occurs, but neither the position nor the value of the fault.
 
 For each fault the attacker obtains the correct and the faulty ciphertext of the same plaintext under
@@ -822,6 +831,8 @@ Work & Cipher & Fault model & Reported cost\\
 Xie et al.~\cite{Xie2021} & GIFT-64 & random nibble & master key: 31 faults on average with a $2^{16}$ search\\
 Luo et al.~\cite{Luo2021} & GIFT & nibble, rounds 25--28 & 64 faulty ciphertexts\\
 Saha et al.~\cite{Saha2018} & GIFT & nibble, automated & 1--2 faults with a remaining key space (see text)\\
+Gao et al.~\cite{Gao2024} & GIFT & two byte models & master key: about 79 and 16 faults in experiments\\
+Kundu et al.~\cite{Kundu2025} & GIFT-128 & random byte & unique key with 3 faults\\
 Bagheri et al.~\cite{Bagheri2013} & PRESENT-80 & single nibble & master key: about 18 faults on average\\
 Tupsamudre et al.~\cite{Tupsamudre2014} & SPECK $2n$ & bit flip & last round key: $n/3$ faults on average\\
 Huo et al.~\cite{Huo2015} & SPECK & random fault & last round key: about 5--8 faults\\
@@ -830,6 +841,15 @@ This work & Dipper 64/96 & random nibble (M1) & master key: median 210 (16 left)
 \botrule
 \end{tabular*}
 \end{table}
+
+Several other fault attacks on GIFT use different settings. Patranabis et al.~\cite{Patranabis2019}
+combine side-channel information with DFA, which lets the attacker learn the fault mask and reduces the
+number of faults; a similar combination was shown for PRESENT~\cite{Patranabis2017}. Gao et
+al.~\cite{Gao2024} study byte fault models for GIFT, and Kundu et al.~\cite{Kundu2025} filter keys with
+truncated impossible differentials instead of exact differences. Liu et al.~\cite{Liu2022} apply fault
+attacks to authenticated-encryption modes built on GIFT. For ARX designs, Lim et al.~\cite{Lim2020} improve
+DFA on LEA by an algebraic representation of modular addition; our bit-serial handling of the borrow serves
+a similar purpose, keeping the effect of the carries exact while guessing only two key bits per step.
 
 GIFT-64 has the same S-box and bit permutation as Dipper but a different key addition and no modular
 addition. The GIFT-64 figure of Xie et al.\ (31 faults with a $2^{16}$ search) is lower than ours for Dipper
@@ -871,8 +891,11 @@ exactly one key, the correct one. CPU times were measured on a shared virtual ma
 
 The attack needs pairs of correct and faulty outputs for the same input. The standard protection is
 therefore to detect the fault before the ciphertext is released: compute the encryption twice, in time or in
-space, and output the result only if the two agree, or check the result by decrypting it. These schemes stop
-the attack described here as long as the fault does not affect both computations in the same way.
+space, and output the result only if the two agree, or check the result by decrypting
+it~\cite{BarEl2006,Barenghi2012,Karaklajic2013}. These schemes stop the attack described here as long as the
+fault does not affect both computations in the same way. Infective countermeasures take a different approach:
+instead of suppressing a faulty output they make it useless to the attacker, for example by randomising
+it~\cite{Gierlichs2012}.
 
 Their main limit is the common-mode fault: when both computations share hardware, code or data, a single fault
 can change both in the same way, and the comparison passes. Our related study~\cite{Huseynli2027} examines which

@@ -65,3 +65,17 @@ Note: the brief mentioned "Huang et al." for SPECK; no such paper was found. The
 |---|---|---|---|---|
 | Bagheri, Ebrahimpour, Ghaedi, "New DFA on PRESENT" | EURASIP JASP 2013:145, doi:10.1186/1687-6180-2013-145 | single bit (last subkey); single nibble (master key) | ~48; ~18 avg | abstract |
 | Patranabis, Breier, Mukhopadhyay, Bhasin, "One plus one is more than two" | FDTC 2017; ePrint 2017/1073 | nibble + power | best 4, avg ~7–8 | abstract |
+
+## D. References added for the paper (21 Oct 2026)
+
+Metadata of every entry in `paper/springer/refs.bib` was checked against Crossref
+(api.crossref.org/works/<DOI>), with OpenAlex for full first names, Springer chapter pages for LNCS
+volumes and the IACR ePrint page where relevant; the source URL is in a comment above each entry.
+Added: Biham–Shamir 1997, Boneh–DeMillo–Lipton 1997, Piret–Quisquater 2003, Tunstall–Mukhopadhyay–Ali
+2011, GIFT (Banik et al. 2017), PRESENT (Bogdanov et al. 2007), SIMON/SPECK (Beaulieu et al. 2015),
+surveys (Bar-El et al. 2006, Barenghi et al. 2012), clock faults (Agoyan et al. 2010), optical faults
+(Skorobogatov–Anderson 2002), countermeasures (Karaklajić et al. 2013, Gierlichs et al. 2012), and the GIFT /
+ARX fault papers from sections A–C (ToFA, SCADFA, Gao et al., Liu et al., Lim et al., Patranabis et al. 2017).
+Corrections: ExpFault DOI is 10.46586/tches.v2018.i2.242-276 (the 10.13154 DOI redirects); Liu et al. is
+IET Inf. Secur. 16(1), 2022 (online 2021); Gao et al. 2024 is early access (no volume/pages yet).
+These were used only for the statements they are cited for; their full texts were not opened.
