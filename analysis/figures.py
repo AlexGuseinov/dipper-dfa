@@ -74,20 +74,23 @@ def fig2():
         fmax = 120
         xs, med, exact = [], [], []
         for f in range(fmax):
-            # a key that stopped earlier keeps its final count
-            vals, cap = [], 0
+            # a key that stopped earlier keeps its final count. Capped values are lower bounds:
+            # the median is exact only if it does not change when they are replaced by +inf.
+            lo, hi = [], []
             for s in st:
                 k = min(f, len(s["log2_surv"]) - 1)
-                vals.append(s["log2_surv"][k]); cap += s["capped"][k]
-            xs.append(f + 1); med.append(np.median(vals)); exact.append(cap / len(st) <= 0.5)
+                val = s["log2_surv"][k]
+                lo.append(val); hi.append(np.inf if s["capped"][k] else val)
+            m_lo, m_hi = np.median(lo), np.median(hi)
+            xs.append(f + 1); med.append(m_lo); exact.append(m_lo == m_hi)
         xs, med, exact = np.array(xs), np.array(med), np.array(exact)
+        ax.plot(xs, med, color=COL[v], ls=LS[v], lw=1, alpha=0.5)
         ax.plot(xs, np.where(exact, med, np.nan), color=COL[v], ls=LS[v], lw=2, label=label)
-        ax.plot(xs, np.where(~exact, med, np.nan), color=COL[v], ls=LS[v], lw=1, alpha=0.5)
     ax.legend(loc="upper right", fontsize=7, frameon=False, labelcolor=TEXT)
     ax.set_xlabel("faults used for rk27")
     ax.set_ylabel("median log2(rk27 candidates)")
     ax.set_title("Surviving candidates for rk27, M1, 64/96", color=TEXT, fontsize=9, loc="left")
-    fig.text(0.01, 0.005, "Thin part: >50% of keys hit the node cap; there the median is a lower bound.",
+    fig.text(0.01, 0.005, "Thin part: the median is only a lower bound (it would change if capped counts were larger).",
              color=MUTED, fontsize=7)
     fig.tight_layout(rect=(0, 0.05, 1, 1))
     fig.savefig(f"{OUT}/fig2_survivors.png")
@@ -118,40 +121,41 @@ def _arrow(ax, x0, y0, x1, y1, color=MUTED, lw=1.0):
 
 def fig_round():
     """Dipper round function with the fault point (diagram, no data)."""
-    fig, ax = plt.subplots(figsize=(6.4, 4.2))
-    ax.set_xlim(0, 10); ax.set_ylim(0, 10); ax.axis("off")
-    ax.grid(False)
-    _box(ax, 5, 9.4, 4.2, 0.6, r"$x_i$ (64 bits)")
-    _arrow(ax, 5, 9.1, 5, 8.55)
-    ax.text(5.15, 8.85, r"$\oplus\ rk_i$", fontsize=8, color=TEXT, va="center")
-    _box(ax, 5, 8.25, 4.2, 0.55, r"$y_i = x_i \oplus rk_i$")
-    ax.annotate("fault injected here\n(M1 nibble / M2 bit / M3 byte)", xy=(7.15, 8.25), xytext=(7.6, 8.9),
-                fontsize=7, color=COL["xor"], arrowprops=dict(arrowstyle="-|>", color=COL["xor"], lw=1))
-    _arrow(ax, 5, 7.97, 5, 7.45)
-    _box(ax, 5, 7.15, 8.6, 0.55, "S-layer: GIFT S-box on all 16 nibbles", fc="#eef4fc")
-    xs = [1.6, 3.85, 6.15, 8.4]
-    names = ["A (63..48)", "B (47..32)", "C (31..16)", "D (15..0)"]
-    rots = [1, 4, 7, 11]
-    for x, nm, r in zip(xs, names, rots):
-        _arrow(ax, x, 6.87, x, 6.35)
-        _box(ax, x, 6.05, 1.9, 0.55, nm, fs=7)
-        _arrow(ax, x, 5.77, x, 5.25)
-        _box(ax, x, 4.95, 1.4, 0.55, rf"$\lll {r}$", fs=8)
-    # modular additions
-    for xa, xb, lab in [(xs[0], xs[1], r"$A_2=A_1\boxplus B_1$"), (xs[2], xs[3], r"$C_2=C_1\boxplus D_1$")]:
-        _arrow(ax, xa, 4.67, xa, 3.9)                                   # A1 / C1 into the adder
-        _arrow(ax, xb, 4.67, xb, 2.35)                                  # B1 / D1 straight to P
-        _arrow(ax, xb, 4.2, xa + 0.32, 3.68, color=COL["dipper"])      # B1 / D1 branch into the adder
-        ax.add_patch(plt.Circle((xa, 3.6), 0.3, fc="#ffffff", ec=COL["dipper"], lw=1.4))
-        ax.text(xa, 3.6, r"$\boxplus$", ha="center", va="center", fontsize=10, color=COL["dipper"])
-        ax.text(xa - 0.4, 2.95, lab, ha="right", fontsize=7, color=TEXT)
-        _arrow(ax, xa, 3.3, xa, 2.35)
-    _box(ax, 5, 2.05, 8.6, 0.55, "P: GIFT-64 bit permutation", fc="#eef4fc")
-    _arrow(ax, 5, 1.77, 5, 1.2)
-    _box(ax, 5, 0.9, 4.2, 0.55, r"$x_{i+1} = F(y_i)$,  $F = P\circ\mathrm{ARX}\circ S$")
-    ax.text(0.05, 0.1, "xor variant: replace each addition by XOR;  none variant: drop the addition (analysis only)",
-            fontsize=6.5, color=MUTED)
-    fig.tight_layout()
+    fig, ax = plt.subplots(figsize=(5.6, 5.2))
+    ax.set_xlim(0, 10); ax.set_ylim(0, 10.6); ax.axis("off"); ax.grid(False)
+    fs = 10.5
+    blue_fill = "#eef4fc"
+    xs = [1.45, 3.8, 6.2, 8.55]
+    # input and key addition
+    _box(ax, 5, 10.1, 3.6, 0.7, r"$x_i$", fs=fs + 1)
+    _arrow(ax, 5, 9.75, 5, 9.15)
+    ax.add_patch(plt.Circle((5, 8.85), 0.3, fc="#ffffff", ec=MUTED, lw=1.2))
+    ax.text(5, 8.85, r"$\oplus$", ha="center", va="center", fontsize=fs + 3, color=TEXT)
+    _box(ax, 8.4, 8.85, 1.5, 0.6, r"$rk_i$", fs=fs)
+    _arrow(ax, 7.65, 8.85, 5.3, 8.85)
+    _arrow(ax, 5, 8.55, 5, 8.0)
+    # fault marker on y_i
+    ax.plot([5], [8.25], marker="X", ms=11, color=COL["xor"], mec="#ffffff", mew=0.8, zorder=5)
+    ax.text(4.55, 8.25, r"$y_i$  (fault)", ha="right", va="center", fontsize=fs - 0.5, color=COL["xor"])
+    _box(ax, 5, 7.65, 9.0, 0.7, "S: GIFT S-box on all 16 nibbles", fc=blue_fill, fs=fs)
+    for x, nm, r in zip(xs, ["A", "B", "C", "D"], [1, 4, 7, 11]):
+        _arrow(ax, x, 7.3, x, 6.75)
+        _box(ax, x, 6.4, 1.7, 0.7, rf"{nm}  $\lll {r}$", fs=fs)
+    for xa, xb in [(xs[0], xs[1]), (xs[2], xs[3])]:
+        _arrow(ax, xa, 6.05, xa, 5.05)
+        _arrow(ax, xb, 6.05, xb, 2.35)
+        _arrow(ax, xb, 5.55, xa + 0.36, 4.82, color=COL["dipper"], lw=1.3)
+        ax.add_patch(plt.Circle((xa, 4.7), 0.35, fc="#ffffff", ec=COL["dipper"], lw=1.6))
+        ax.text(xa, 4.7, r"$\boxplus$", ha="center", va="center", fontsize=fs + 4, color=COL["dipper"])
+        _arrow(ax, xa, 4.35, xa, 2.35)
+    ax.text(xs[0] - 0.15, 3.5, r"$A_2$", ha="right", va="center", fontsize=fs, color=TEXT)
+    ax.text(xs[2] - 0.15, 3.5, r"$C_2$", ha="right", va="center", fontsize=fs, color=TEXT)
+    ax.text(xs[1] + 0.15, 3.5, r"$B_1$", ha="left", va="center", fontsize=fs, color=TEXT)
+    ax.text(xs[3] + 0.15, 3.5, r"$D_1$", ha="left", va="center", fontsize=fs, color=TEXT)
+    _box(ax, 5, 2.0, 9.0, 0.7, "P: GIFT-64 bit permutation", fc=blue_fill, fs=fs)
+    _arrow(ax, 5, 1.65, 5, 1.1)
+    _box(ax, 5, 0.75, 3.6, 0.7, r"$x_{i+1}$", fs=fs + 1)
+    fig.tight_layout(pad=0.2)
     fig.savefig(f"{OUT}/fig3_round.png")
     plt.close(fig)
 
