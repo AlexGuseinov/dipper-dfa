@@ -1,0 +1,6 @@
+name: xor96_M1_deep_th12
+command: bin/dfa attack xor ks96 M1 deep 1000 0xD1FA0101 1 12 1000000 8
+started: 2026-10-20T21:16:55Z
+host: vmi3646081  cpu: AMD EPYC Processor (with IBPB)
+compiler: gcc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0
+code sha256: 962da731cbb3453f

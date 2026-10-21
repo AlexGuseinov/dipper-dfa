@@ -29,7 +29,7 @@
 #include "../variants/cipher.h"
 
 enum { M1 = 1, M2 = 2, M3 = 3 };
-#define DFA_MAXP 256
+#define DFA_MAXP 1024
 
 typedef struct { uint16_t x, xf, y, yf; } gpair_t;   /* X = A2 or C2 part, Y = B1 or D1 part, before key */
 

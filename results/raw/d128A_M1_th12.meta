@@ -1,0 +1,10 @@
+name: d128A_M1_th12
+command: bin/dfa attack dipper ks128A M1 near 1000 0xD1FA0201 4 12 1000000 8
+started: 2026-10-20T19:17:22Z
+host: vmi3646081  cpu: AMD EPYC Processor (with IBPB)
+compiler: gcc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0
+code sha256: 962da731cbb3453f
+wall_s: 4778.47
+user_s: 29122.66
+finished: 2026-10-20T20:37:00Z
+lines: 1000

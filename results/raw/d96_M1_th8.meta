@@ -1,0 +1,10 @@
+name: d96_M1_th8
+command: bin/dfa attack dipper ks96 M1 near 1000 0xD1FA0101 4 8 1000000 8
+started: 2026-10-20T17:28:51Z
+host: vmi3646081  cpu: AMD EPYC Processor (with IBPB)
+compiler: gcc (Ubuntu 13.3.0-6ubuntu2~24.04.1) 13.3.0
+code sha256: 1d1b2afaa516c6e0
+wall_s: 807.48
+user_s: 3215.57
+finished: 2026-10-20T17:42:19Z
+lines: 1000
