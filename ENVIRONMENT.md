@@ -22,3 +22,9 @@ https://github.com/AlexGuseinov/Dipper-lightweight-cipher at commit
 (`CLOCK_THREAD_CPUTIME_ID`). During the runs another long job of Ali's used all
 8 vCPUs of the server, so CPU times are measured under contention and are an
 upper bound for an idle machine. Use them only to compare runs with each other.
+
+**Where things ran.** All attack runs and the 2^32 search ran on the server. On the Mac only:
+git, quick functional tests during development, and `analysis/figures.py` (matplotlib 3.9.2 from
+an existing venv; the server has no python3-venv). The other job on the server stopped during the
+runs (load was about 8 at 00:24 on 21 Oct and about 0 later), so CPU times of later runs were
+measured on a less loaded machine than those of the first runs.

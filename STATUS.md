@@ -22,3 +22,12 @@
 (`sim/batches/step2_d96_M1.sh`).
 
 **Next**: 64/128 options A and B; ablation xor/none (deep filter); M2, M3; tables, figures, RESULTS.md.
+
+## 21 Oct 2026
+
+All planned runs finished (steps 2-5, option B search on 5 keys, two reruns). Results pulled into
+this repo; figures in figures/; paper draft in paper/paper.tex (compile on Overleaf).
+Main numbers (64/96, M1, 1000/1000 keys): median 210 faults (16 candidates left), 116 (2^8), 91 (2^12).
+64/128: option A median 316; option B median 208 + 2^32 search.
+Ablation: under M1/M3 the near filter gives no information on xor/none; under M2 dipper median 115 vs 299.
+Open: Ali to review wording; create the GitHub remote; AI-use statement; check citations in full text.
