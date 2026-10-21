@@ -1,6 +1,6 @@
 # RESULTS
 
-Paper-ready tables and the discussion are in `paper/paper.tex` (Tables 1-3). All rows below are produced by `analysis/summarize.py` from `results/raw/`; faults are simulated in software, 1000 random keys per row.
+Paper-ready tables and the discussion are in `paper/springer/paper_sn.tex`. All rows below are produced by `analysis/summarize.py` from `results/raw/`; faults are simulated in software, 1000 random keys per row.
 
 xor and none are analysis-only variants, not proposed as ciphers.
 
